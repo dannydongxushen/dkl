@@ -13,7 +13,6 @@ from llm import llm_instance
 from rag_engine import rag_engine_instance
 from agent_prompts import build_system_prompt
 from tool_schemas import TOOLS
-# 修复 Pylance 报错：从 backend 包中导入 database 模块
 from backend import database
 
 def execute_tool(tool_name: str, args: dict, current_patient_id: str) -> str:
@@ -49,13 +48,17 @@ def execute_tool(tool_name: str, args: dict, current_patient_id: str) -> str:
             booking_date=date,
             booking_time=time
         )
+        
+    elif tool_name == "cancel_booking":
+        booking_id = args.get("booking_id", "")
+        if not booking_id:
+            return "Missing booking_id."
+        return database.cancel_booking(booking_id=booking_id)
             
     return "Unknown tool."
 
 def process_message(messages: list, patient_id: str = "P001") -> str:
     patient_ctx = database.get_patient_context(patient_id)
-    
-    # 获取今天的真实日期，注入给大模型
     current_date_str = datetime.now().strftime("%Y-%m-%d")
     
     system_prompt = build_system_prompt(

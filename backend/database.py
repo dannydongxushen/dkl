@@ -70,3 +70,23 @@ def create_booking(patient_id: str, doctor_id: str, treatment_id: str, booking_d
         return f"Booking successfully created with ID {booking_id}."
     except Exception as e:
         return f"Failed to create booking: {str(e)}"
+
+def cancel_booking(booking_id: str) -> str:
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("""
+            UPDATE patient_bookings
+            SET status = 'Cancelled'
+            WHERE booking_id = ?
+        """, (booking_id,))
+        
+        if cursor.rowcount == 0:
+            conn.close()
+            return f"Failed to cancel booking: Booking ID {booking_id} not found."
+            
+        conn.commit()
+        conn.close()
+        return f"Booking {booking_id} has been successfully cancelled."
+    except Exception as e:
+        return f"Failed to cancel booking: {str(e)}"

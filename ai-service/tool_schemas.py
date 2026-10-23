@@ -51,5 +51,22 @@ TOOLS = [
                 "required": ["doctor_id", "treatment_id", "booking_date", "booking_time"]
             }
         }
+    },
+    {
+        "type": "function",
+        "function": {
+            "name": "cancel_booking",
+            "description": "Cancel an existing appointment for the patient.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "booking_id": {
+                        "type": "string", 
+                        "description": "The ID of the booking to cancel (e.g., B1001)."
+                    }
+                },
+                "required": ["booking_id"]
+            }
+        }
     }
 ]
