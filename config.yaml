@@ -1,0 +1,31 @@
+# config.yaml
+paths:
+  data_dir: "mock-data"
+  sqlite_db: "database/clinic_data.db"
+  chroma_dir: "database/chroma_db"
+  csv_files:
+    - "clinics.csv"
+    - "doctors.csv"
+    - "treatments.csv"
+    - "patients.csv"
+    - "patient_bookings.csv"
+    - "patient_treatment_history.csv"
+
+rag:
+  collection_name: "clinic_db"
+  embedding_model: "Qwen/Qwen3-Embedding-0.6B"
+  reranker_model: "Qwen/Qwen3-Reranker-0.6B"
+  rerank_top_k: 2
+
+llm:
+  provider: "deepseek"
+  model_name: "deepseek-flash"
+  base_url: "https://api.deepseek.com"
+  api_key_env: "DEEPSEEK_API_KEY"
+
+observability:
+  enabled: false
+  base_url: "http://localhost:3000"
+  public_key: "pk-lf-local"
+  secret_key: "sk-lf-local"
+  log_file: "observability/logs/llm_calls.jsonl"
