@@ -14,7 +14,7 @@ The goal of this project is to build a robust, end-to-end MVP for an intelligent
 
 The system adopts a **polyglot persistence** approach, separating structured transactional data from unstructured semantic knowledge.
 
-- **SQLite (Relational)**: Used for high-integrity business operations (bookings, patient profiles). The Agent explicitly executes SQL `INSERT` and `SELECT` queries via tools, ensuring strict transactional boundaries.
+- **SQLite (Relational)**: Used for high-integrity business operations (bookings, patient profiles). The Agent explicitly executes SQL `INSERT`, `SELECT`, and `UPDATE` queries via tools, ensuring strict transactional boundaries.
 - **ChromaDB (Vector Store)**: Used for RAG.
   - *Chunking Strategy*: Rather than naive fixed-length chunking, the data is dynamically flattened by entity. For example, an entire doctor row (`Doctor ID`, `Name`, `Specialty`, `Bio`) is concatenated into a single natural language sentence. This ensures each vector represents a complete, semantically rich entity.
 
@@ -25,15 +25,18 @@ The core intelligence is powered by the LLM. Intent routing is achieved implicit
 - **Q&A / Recommendation Intent**: Invokes `search_clinical_knowledge` (Triggers RAG).
 - **Existing Booking Queries**: Invokes `get_patient_bookings` (Queries SQLite).
 - **New Booking Intent**: Invokes `create_booking` (Writes to SQLite).
+- **Cancellation Intent**: Invokes `cancel_booking` (Updates SQLite status to 'Cancelled').
 
-**Conversational Parameter Extraction**: When booking, the Agent must collect `doctor_id`, `treatment_id`, `date`, and `time`. The tool schema enforces these as `required`. If the user provides partial information, the LLM naturally prompts the user to supply the missing parameters rather than hallucinating.
+**Conversational Parameter Extraction & Safety**: 
+- When booking, the Agent must collect `doctor_id`, `treatment_id`, `date`, and `time`. The tool schema enforces these as `required`. If the user provides partial information, the LLM naturally prompts the user to supply the missing parameters rather than hallucinating.
+- When canceling, the Agent is instructed to first locate the specific `booking_id` (using `get_patient_bookings` if necessary) and explicitly ask for user confirmation before executing the destructive `cancel_booking` tool.
 
 ### 3.1 Deterministic LLM Configuration (Temperature = 0)
 
 The LLM is explicitly configured with `temperature = 0` for the following critical reasons:
-- **Strict Tool Calling (JSON Formatting)**: Booking appointments requires absolute structural precision. Higher temperatures increase the risk of the LLM generating malformed JSON or hallucinating ID values (e.g., mistaking `D101` for `D-101`).
+- **Strict Tool Calling (JSON Formatting)**: Booking and cancellation require absolute structural precision. Higher temperatures increase the risk of the LLM generating malformed JSON or hallucinating ID values.
 - **Eliminating Medical Hallucinations**: In a clinical context, consistency is paramount. We require the model to output the most probable, factual response rather than being "creative".
-- **Extraction Accuracy**: When parsing user input to extract dates (`YYYY-MM-DD`) and times (`HH:MM:SS`), deterministic generation ensures reliable regex-like extraction behavior.
+- **Extraction Accuracy**: When parsing user input to extract dates (`YYYY-MM-DD`) and times (`HH:MM:SS`), deterministic generation ensures reliable extraction behavior.
 
 ## 4. Deep Dive: RAG Pipeline (Embedding & Reranker)
 
@@ -60,9 +63,11 @@ To ensure high accuracy in medical recommendations, the RAG engine utilizes a **
 
 - **Full-Link Tracing**: The system implements a dual-track observability strategy. It logs LLM token usage and latency to a local JSONL file. If Litefuse (an OpenTelemetry-compatible local tracing service) is active on port 23100, it pushes Span trees (ChromaDB -> Reranker -> LLM) for visualization.
 - **Graceful Degradation**: If the LLM API times out or Litefuse is unreachable, the system logs the error and falls back gracefully without crashing the FastAPI server.
+- **Auto-Initialization (Idempotency)**: The `seeding` scripts and the FastAPI `lifespan` event are designed to be idempotent. If the SQLite database or ChromaDB collections already exist and contain data, the initialization is gracefully skipped. If they are missing or corrupted, they are automatically rebuilt on startup.
 - **Static File Serving**: FastAPI serves both the `/api` routes and the static frontend UI, eliminating CORS issues and simplifying deployment.
 
 ## 6. Future Improvements (Production Readiness)
 - **MCP Integration**: The `execute_tool` function can be swapped to use Model Context Protocol (MCP) for standardized tool discovery.
 - **Hybrid Search**: Introduce BM25 keyword search alongside vector search to handle exact ID lookups more reliably.
 - **Database Migration**: Transition from SQLite to PostgreSQL for high-concurrency write operations in a real production environment.
+- **Distributed Tracing**: Set up a dedicated OpenTelemetry collector (e.g., Jaeger) for distributed tracing across multiple microservices.

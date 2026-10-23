@@ -1,6 +1,6 @@
 # ClinicPilot AI
 
-An intelligent medical clinic assistant MVP. The system streamlines clinic operations through a conversational AI that handles multi-turn dialogue, intent classification, clinical knowledge retrieval (RAG), and automated appointment booking via Agent Tool-Calling.
+An intelligent medical clinic assistant MVP. The system streamlines clinic operations through a conversational AI that handles multi-turn dialogue, intent classification, clinical knowledge retrieval (RAG), and automated appointment management (booking & cancellation) via Agent Tool-Calling.
 
 > **Note**: For in-depth architectural rationale, embedding/reranker choices, and workflow design, please refer to [TECH_DOC.md](./TECH_DOC.md).
 
@@ -20,16 +20,17 @@ An intelligent medical clinic assistant MVP. The system streamlines clinic opera
         │                         ▼
         │                   [ Qwen3-Reranker ]
         │
-        └─► [ Tool Calling ] ──(Read/Write)───► [ SQLite Database ]
+        └─► [ Tool Calling ] ──(Read/Write/Update)───► [ SQLite Database ]
 ```
 
 ## ✨ Key Features
 
 - **Two-Stage RAG Pipeline**: Local `Qwen3-Embedding-0.6B` (Recall) + `Qwen3-Reranker-0.6B` (Precision).
 - **Agentic Booking Flow**: Automatically extracts missing parameters (date, time) through natural conversation.
+- **Agentic Cancellation**: Supports multi-turn confirmation and updates appointment status to "Cancelled" directly in the database.
 - **Multi-Provider Support**: Works seamlessly with DeepSeek (default) or OpenRouter APIs.
 - **Full Observability**: Built-in local tracing (JSONL fallback) and Litefuse (OpenTelemetry) support.
-- **Auto-refreshing UI**: The frontend real-time UI automatically updates the booking table when the AI confirms a new appointment.
+- **Auto-refreshing UI**: The frontend real-time UI automatically updates the booking table when the AI modifies any appointment.
 - **Auto-Initialization**: Databases and vector stores are initialized automatically on the first run.
 
 ---
@@ -108,9 +109,13 @@ Here are a few recommended prompts to test the system's end-to-end capabilities:
 > *"What are my upcoming appointments?"*
 *Expected: The AI triggers the `get_patient_bookings` tool to query the SQLite database and lists John Doe's existing bookings.*
 
-**3. Test Agentic Booking Flow (Write & Multi-turn)**
+**3. Test Agentic Booking Flow (Write Operation)**
 > *"I want to book an appointment for my knee pain next Monday."*
-*Expected: The AI recognizes the intent, gathers missing parameters (like exact time and specific doctor), and eventually triggers the `create_booking` tool. The UI's right panel will instantly reflect the new booking.*
+*Expected: The AI recognizes the intent, gathers missing parameters (like exact time and specific doctor), and triggers the `create_booking` tool. The UI's right panel will instantly reflect the new booking.*
+
+**4. Test Agentic Cancellation (Update Operation)**
+> *"I want to cancel my appointment next Monday."*
+*Expected: The AI queries existing bookings, finds the specific Booking ID, asks for confirmation, and triggers the `cancel_booking` tool. The UI's right panel will instantly update the status to "Cancelled".*
 
 ---
 
