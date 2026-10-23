@@ -1,0 +1,17 @@
+version: '3.8'
+
+services:
+  clinic-pilot:
+    build: .
+    container_name: clinic-pilot-ai
+    ports:
+      - "8088:8088"
+    environment:
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - HF_ENDPOINT=https://hf-mirror.com
+    volumes:
+      # 挂载宿主机的 HuggingFace 缓存，避免容器内重复下载大模型 (注意路径是WSL里的~/.cache)
+      - ~/.cache/huggingface:/root/.cache/huggingface
+      # 挂载数据库目录，这样重启容器数据不会丢失
+      - ./database:/app/database
+    restart: unless-stopped

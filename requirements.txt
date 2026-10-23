@@ -1,0 +1,9 @@
+fastapi
+uvicorn
+pandas
+pyyaml
+openai
+chromadb
+sentence-transformers
+torch
+langfuse>=4.0.0
