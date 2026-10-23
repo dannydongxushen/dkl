@@ -1,4 +1,3 @@
-# ai-service/llm.py
 import os
 import sys
 import time
@@ -13,10 +12,14 @@ from observability.logger import obs_logger
 LLM_CONFIG = config["llm"]
 BASE_URL = LLM_CONFIG["base_url"]
 MODEL_NAME = LLM_CONFIG["model_name"]
-API_KEY = LLM_CONFIG["api_key"]
+API_KEY = LLM_CONFIG.get("api_key")
 
 if not API_KEY:
-    raise ValueError(f"Environment variable {LLM_CONFIG['api_key_env']} is not set.")
+    active_provider = config["llm"].get("active_provider", "unknown")
+    raise ValueError(
+        f"API Key is missing for provider '{active_provider}'. "
+        f"Please set the required environment variable before starting the application."
+    )
 
 client = OpenAI(
     api_key=API_KEY,
@@ -28,7 +31,7 @@ class LLMService:
         self.client = client
         self.model = MODEL_NAME
 
-    def chat(self, messages: list, tools: list = None):
+    def chat(self, messages: list, tools: list | None = None):
         start_time = time.time()
         
         kwargs = {

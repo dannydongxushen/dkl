@@ -1,4 +1,3 @@
-# ai-service/rag_engine.py
 import os
 import sys
 import time
@@ -19,7 +18,7 @@ CHROMA_DIR = config["paths"]["chroma_dir"]
 COLLECTION_NAME = config["rag"]["collection_name"]
 EMBEDDING_MODEL = config["rag"]["embedding_model"]
 
-class QwenEmbeddingFunction(EmbeddingFunction[Documents]):
+class QwenEmbeddingFunction(EmbeddingFunction):
     def __init__(self, model_name: str):
         self.model = SentenceTransformer(
             model_name, 
@@ -31,14 +30,19 @@ class QwenEmbeddingFunction(EmbeddingFunction[Documents]):
 
 class RAGEngine:
     def __init__(self):
+        os.makedirs(CHROMA_DIR, exist_ok=True)
         self.client = chromadb.PersistentClient(path=CHROMA_DIR)
         self.embedding_fn = QwenEmbeddingFunction(EMBEDDING_MODEL)
-        self.collection = self.client.get_collection(
+        
+        self.collection = self.client.get_or_create_collection(
             name=COLLECTION_NAME, 
             embedding_function=self.embedding_fn
         )
 
     def search(self, query: str, initial_top_k: int = 5) -> list:
+        if self.collection.count() == 0:
+            return []
+            
         start_time = time.time()
         results = self.collection.query(
             query_texts=[query],
@@ -46,16 +50,20 @@ class RAGEngine:
         )
         latency_ms = (time.time() - start_time) * 1000
         
-        if not results["documents"] or not results["documents"][0]:
+        docs_list = results.get("documents") or []
+        metas_list = results.get("metadatas") or []
+        ids_list = results.get("ids") or []
+        
+        if not docs_list or not docs_list[0]:
             obs_logger.log_retrieval(component="ChromaDB", query=query, latency_ms=latency_ms, result_count=0)
             return []
             
         retrieved_docs = []
-        for i in range(len(results["documents"][0])):
+        for i in range(len(docs_list[0])):
             retrieved_docs.append({
-                "text": results["documents"][0][i],
-                "metadata": results["metadatas"][0][i],
-                "id": results["ids"][0][i]
+                "text": docs_list[0][i],
+                "metadata": metas_list[0][i] if metas_list else {},
+                "id": ids_list[0][i] if ids_list else str(i)
             })
             
         obs_logger.log_retrieval(component="ChromaDB", query=query, latency_ms=latency_ms, result_count=len(retrieved_docs))

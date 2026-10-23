@@ -18,10 +18,18 @@ rag:
   rerank_top_k: 2
 
 llm:
-  provider: "deepseek"
-  model_name: "deepseek-flash"
-  base_url: "https://api.deepseek.com"
-  api_key_env: "DEEPSEEK_API_KEY"
+  active_provider: "deepseek" # "deepseek" or "openrouter"
+  
+  providers:
+    deepseek:
+      model_name: "deepseek-chat"
+      base_url: "https://api.deepseek.com"
+      api_key_env: "DEEPSEEK_API_KEY" # use environment variable to store your DeepSeek API key
+
+    openrouter:
+      model_name: "openai/gpt-4o-mini"
+      base_url: "https://openrouter.ai/api/v1"
+      api_key_env: "OPENROUTER_API_KEY" # use environment variable to store your OpenRouter API key
 
 observability:
   enabled: false

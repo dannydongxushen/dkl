@@ -2,12 +2,13 @@
 
 ## 1. Architectural Choices
 
-The goal of this project is to build a robust, end-to-end MVP for an intelligent clinic assistant. Rather than using heavy abstraction frameworks (like LangChain or LlamaIndex), I chose a **lightweight custom orchestration architecture** powered by **FastAPI**, **OpenAI-compatible SDK (DeepSeek)**, and **native Python**.
+The goal of this project is to build a robust, end-to-end MVP for an intelligent clinic assistant. Rather than using heavy abstraction frameworks (like LangChain or LlamaIndex), I chose a **lightweight custom orchestration architecture** powered by **FastAPI**, **OpenAI-compatible SDK**, and **native Python**.
 
 **Why avoid heavy frameworks?**
 - **Transparency & Control**: A custom Agent loop provides full visibility into the state, tool executions, and prompt injection, which is critical for debugging and ensuring reliable medical outputs.
 - **Lower Latency**: Bypassing LangChain's overhead reduces response time.
 - **Easier Extensibility**: Integrating MCP (Model Context Protocol) or custom REST APIs is straightforward without fighting framework-specific abstractions.
+- **Multi-Provider Support**: The LLM client is decoupled via an Adapter pattern in `config.py`. The system supports both DeepSeek and OpenRouter out-of-the-box. Switching providers requires zero changes to the business logic code; it only requires changing `active_provider` in `config.yaml`.
 
 ## 2. Data Layer Design (SQLite vs. ChromaDB)
 
@@ -19,13 +20,20 @@ The system adopts a **polyglot persistence** approach, separating structured tra
 
 ## 3. AI Agent & Intent Recognition Workflow
 
-The core intelligence is powered by **DeepSeek** (via an OpenAI-compatible API). Intent routing is achieved implicitly through **Function Calling (Tool Calling)**.
+The core intelligence is powered by the LLM. Intent routing is achieved implicitly through **Function Calling (Tool Calling)**.
 
 - **Q&A / Recommendation Intent**: Invokes `search_clinical_knowledge` (Triggers RAG).
 - **Existing Booking Queries**: Invokes `get_patient_bookings` (Queries SQLite).
 - **New Booking Intent**: Invokes `create_booking` (Writes to SQLite).
 
 **Conversational Parameter Extraction**: When booking, the Agent must collect `doctor_id`, `treatment_id`, `date`, and `time`. The tool schema enforces these as `required`. If the user provides partial information, the LLM naturally prompts the user to supply the missing parameters rather than hallucinating.
+
+### 3.1 Deterministic LLM Configuration (Temperature = 0)
+
+The LLM is explicitly configured with `temperature = 0` for the following critical reasons:
+- **Strict Tool Calling (JSON Formatting)**: Booking appointments requires absolute structural precision. Higher temperatures increase the risk of the LLM generating malformed JSON or hallucinating ID values (e.g., mistaking `D101` for `D-101`).
+- **Eliminating Medical Hallucinations**: In a clinical context, consistency is paramount. We require the model to output the most probable, factual response rather than being "creative".
+- **Extraction Accuracy**: When parsing user input to extract dates (`YYYY-MM-DD`) and times (`HH:MM:SS`), deterministic generation ensures reliable regex-like extraction behavior.
 
 ## 4. Deep Dive: RAG Pipeline (Embedding & Reranker)
 
@@ -56,5 +64,5 @@ To ensure high accuracy in medical recommendations, the RAG engine utilizes a **
 
 ## 6. Future Improvements (Production Readiness)
 - **MCP Integration**: The `execute_tool` function can be swapped to use Model Context Protocol (MCP) for standardized tool discovery.
-- **Containerization**: Wrap the FastAPI app and Litefuse into a `docker-compose` environment.
 - **Hybrid Search**: Introduce BM25 keyword search alongside vector search to handle exact ID lookups more reliably.
+- **Database Migration**: Transition from SQLite to PostgreSQL for high-concurrency write operations in a real production environment.

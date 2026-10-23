@@ -14,12 +14,12 @@ DB_FILE = os.path.join(BASE_DIR, config["paths"]["sqlite_db"])
 CSV_FILES = config["paths"]["csv_files"]
 
 def init_sqlite():
-    print(f"--- Initializing SQLite database: {DB_FILE} ---")
-    
-    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
-    
     if os.path.exists(DB_FILE):
-        os.remove(DB_FILE)
+        print(f"✅ SQLite database {DB_FILE} already exists. Skipping initialization.")
+        return
+
+    print(f"--- Initializing SQLite database: {DB_FILE} ---")
+    os.makedirs(os.path.dirname(DB_FILE), exist_ok=True)
         
     conn = sqlite3.connect(DB_FILE)
     

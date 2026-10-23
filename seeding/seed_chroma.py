@@ -1,6 +1,6 @@
+# seeding/seed_chroma.py
 import os
 import sys
-import shutil
 import chromadb
 import pandas as pd
 import torch
@@ -29,21 +29,21 @@ class QwenEmbeddingFunction(EmbeddingFunction):
 
 def init_chroma():
     print(f"--- Initializing ChromaDB: {CHROMA_DIR} ---")
-    
     os.makedirs(os.path.dirname(CHROMA_DIR), exist_ok=True)
-    
-    if os.path.exists(CHROMA_DIR):
-        shutil.rmtree(CHROMA_DIR)
         
     client = chromadb.PersistentClient(path=CHROMA_DIR)
     
     print(f"Loading embedding model: {MODEL_NAME} ...")
     embedding_fn = QwenEmbeddingFunction(MODEL_NAME)
     
-    collection = client.create_collection(
+    collection = client.get_or_create_collection(
         name=COLLECTION_NAME, 
         embedding_function=embedding_fn
     )
+    
+    if collection.count() > 0:
+        print(f"✅ ChromaDB already contains {collection.count()} items. Skipping initialization.")
+        return
     
     documents = []
     metadatas = []

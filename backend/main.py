@@ -1,3 +1,4 @@
+# backend/main.py
 import os
 import sys
 import socket
@@ -12,6 +13,8 @@ sys.path.append(BASE_DIR)
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
 from api import router
+from seeding.seed_sqlite import init_sqlite
+from seeding.seed_chroma import init_chroma
 
 def is_port_open(port: int) -> bool:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
@@ -20,13 +23,16 @@ def is_port_open(port: int) -> bool:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Always run init functions; they contain logic to skip if data already exists
+    print("\n--- Checking Database Status ---")
+    init_sqlite()
+    init_chroma()
+
+    # Start Litefuse if not running
     litefuse_process = None
-    
-    # 检测后台数据接收端口 23100
     if not is_port_open(23100):
         print("Starting Litefuse service...")
         try:
-            # 使用绝对路径执行启动脚本
             subprocess.Popen(
                 ["bash", os.path.expanduser("~/.litefuse/bin/start.sh")],
                 stdout=subprocess.DEVNULL,
